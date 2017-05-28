@@ -6,6 +6,7 @@ using UnityEngine;
 
 static class GeometryExtensions
 {
+    //Returns true if two lines intersect
     public static bool FastLineSegmentIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
     {
 

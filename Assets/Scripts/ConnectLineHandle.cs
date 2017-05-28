@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
+//Custom editor class to draw line handles between objects
+//Draws a polygon starting from the first element to last element
+
 [CustomEditor(typeof(ConnectedObjects))]
 public class ConnectLineHandle : Editor {
 

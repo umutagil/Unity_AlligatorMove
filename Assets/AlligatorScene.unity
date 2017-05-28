@@ -374,7 +374,7 @@ Prefab:
     - target: {fileID: 195855562070855984, guid: d190432e157b404408b6a055a160575e,
         type: 2}
       propertyPath: m_AutoBraking
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: d190432e157b404408b6a055a160575e, type: 2}

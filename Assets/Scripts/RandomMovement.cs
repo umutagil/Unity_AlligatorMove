@@ -2,24 +2,32 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Assertions;
 
+[RequireComponent (typeof(NavMeshAgent))]
+[RequireComponent(typeof(Animator))]
 public class RandomMovement : MonoBehaviour
 {
 
     [Range(0, 1)]
-    public float randomness = 0f;
-    public float speed = 5f;
-    public float timeBeforeDecide = 1f;
-    public Transform boundaries;    
+    public float randomness = 0f;           //decides how random the agent moves
+    public float speed = 1f;                //speed of agent
+    public float timeBeforeDecide = 1f;     //timestep duration of decided action
+    public Transform boundaries;            //parent object of corner point gameobjects
 
     private NavMeshAgent agent;
-    private Animator anim;    
-    private Vector3 nextDestination;
-    private Borders borders;
-    private List<Vector3> boundaryCorners;
+    private Animator anim;        
+    private Borders borders;                //object that holds border corners and border lines
+    private Vector3 nextDestination;        //next destination of the agent
+    private Vector3 prevDestination;        //last successfull destination of the agent
+    private Vector3 startPos;               //starting position of the agent    
+    private int destinationTryCount = 5;    //how many times should the agent try to find a destination that is inside borders
     private float lastChangeTime = 0f;
-    private Vector3 prevDestination;
-    private Vector3 startPos;
+
+    void OnValidate()
+    {
+        Assert.IsNotNull(boundaries, "Boundaries not assigned!");
+    }
 
     void Awake()
     {
@@ -29,23 +37,35 @@ public class RandomMovement : MonoBehaviour
 
     void Start()
     {
+        Assert.IsNotNull(boundaries, "Boundaries not assigned!");        
+
         startPos = transform.position;
         prevDestination = transform.position;
         nextDestination = transform.position + transform.forward;
         agent.SetDestination(nextDestination);
-        agent.speed = speed;
+        agent.speed = speed;        
         borders = ComputeBorders(boundaries);        
     }
 
     void Update()
-    {        
+    {
+        Assert.IsFalse((speed < 0), "Speed is lower than zero!");
+        Assert.IsFalse((timeBeforeDecide < 0), "timeBeforeDecide is lower than zero!");
+
         ComputeNextDestination();
         agent.speed = speed;
         agent.stoppingDistance = speed * 0.2f;
-        float maxSpeed = speed > 0 ? speed : 1;
-        anim.SetFloat("speed", Vector3.Magnitude(agent.velocity) / maxSpeed);        
+        SetAnimParameters();        
     }
 
+    //Sets speed parameter of the animator controller
+    void SetAnimParameters()
+    {
+        float maxSpeed = speed > 0 ? speed : 1;
+        anim.SetFloat("speed", Vector3.Magnitude(agent.velocity) / maxSpeed);
+    }
+    
+    //At the end of every timestep randomly decide the next destination
     void ComputeNextDestination()
     {
         if (Time.time - lastChangeTime > timeBeforeDecide)
@@ -62,41 +82,22 @@ public class RandomMovement : MonoBehaviour
                 nextDestination = transform.position + transform.forward * speed;
             }
 
-            for (int i = 0; i < 5; i++)
+            if(borders.IsDestinationOut(prevDestination, nextDestination))
             {
-                if (!IsNewDestionationOut(borders, prevDestination, nextDestination))
-                {
-                    break;
-                }
-
-                float rotAngle = (Random.value * 2 - 1f) * 90;
-                Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * -transform.forward;
-                nextDestination = transform.position + nextDirection * speed;
-
-                if (i == 4)
-                    nextDestination = startPos;
+                nextDestination = FindRandomDestionationInside();
             }
+            
             prevDestination = agent.destination;
             agent.SetDestination(nextDestination);
         }
         else if (agent.remainingDistance <= agent.stoppingDistance)
         {
             nextDestination = transform.position + transform.forward * speed;
-
-            for(int i = 0; i < 5; i++)
+            if (borders.IsDestinationOut(prevDestination, nextDestination))
             {
-                if (!IsNewDestionationOut(borders, prevDestination, nextDestination))
-                {
-                    break;
-                }
+                nextDestination = FindRandomDestionationInside();
+            }            
 
-                float rotAngle = (Random.value * 2 - 1f) * 90;
-                Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * -transform.forward;
-                nextDestination = transform.position + nextDirection * speed;
-
-                if (i == 4)
-                    nextDestination = startPos;
-            }
             prevDestination = agent.destination;
             agent.SetDestination(nextDestination);
         }
@@ -104,27 +105,29 @@ public class RandomMovement : MonoBehaviour
         Debug.DrawLine(transform.position, nextDestination, Color.red);
     }
 
-    //check all the border lines if the new destination is out
-    bool IsNewDestionationOut(Borders borders, Vector3 currentPos, Vector3 nextDestPos)
-    {            
-        Vector2 currentPosXZ = new Vector2(currentPos.x, currentPos.z);
-        Vector2 nextDestPosXZ = new Vector2(nextDestPos.x, nextDestPos.z);
-
-        for (int i = 0; i < borders.lineIndices.Count; i++)
+    //This is called if the agents reaches borders
+    //Tries to find a random destination inside the borders
+    Vector3 FindRandomDestionationInside()
+    {
+        Vector3 destination = startPos;
+        for (int i = 0; i < destinationTryCount; i++)
         {
-            int p1Index = borders.lineIndices[i].pos1;
-            int p2Index = borders.lineIndices[i].pos2;
-            Vector3 p1 = borders.cornerPosList[p1Index];
-            Vector3 p2 = borders.cornerPosList[p2Index];
-            Vector2 p1XZ = new Vector2(p1.x, p1.z);
-            Vector2 p2XZ = new Vector2(p2.x, p2.z);
+            float rotAngle = (Random.value * 2 - 1f) * 90;
+            Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * -transform.forward;
+            destination = transform.position + nextDirection * speed;
 
-            bool intersects = GeometryExtensions.FastLineSegmentIntersection(p1XZ, p2XZ, currentPosXZ, nextDestPosXZ);
-            if (intersects)
-                return true;
+            if (!borders.IsDestinationOut(prevDestination, destination))
+            {
+                break;
+            }
+
+            if (i == (destinationTryCount - 1))
+            {
+                destination = startPos;
+            }                
         }
 
-        return false;
+        return destination;
     }
 
     //gets positions of border corners objects

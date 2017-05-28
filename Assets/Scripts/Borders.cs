@@ -18,7 +18,30 @@ public class Borders
             Line newLine = new Line(i, (i + 1) % cornerCount);
             lineIndices.Add(newLine);
         }
-    }    
+    }
+
+    //checks all the border lines if the new destination is out
+    public bool IsDestinationOut(Vector3 currentPos, Vector3 nextDestPos)
+    {
+        Vector2 currentPosXZ = new Vector2(currentPos.x, currentPos.z);
+        Vector2 nextDestPosXZ = new Vector2(nextDestPos.x, nextDestPos.z);
+
+        for (int i = 0; i < lineIndices.Count; i++)
+        {
+            int p1Index = lineIndices[i].pos1;
+            int p2Index = lineIndices[i].pos2;
+            Vector3 p1 = cornerPosList[p1Index];
+            Vector3 p2 = cornerPosList[p2Index];
+            Vector2 p1XZ = new Vector2(p1.x, p1.z);
+            Vector2 p2XZ = new Vector2(p2.x, p2.z);
+
+            bool intersects = GeometryExtensions.FastLineSegmentIntersection(p1XZ, p2XZ, currentPosXZ, nextDestPosXZ);
+            if (intersects)
+                return true;
+        }
+
+        return false;
+    }
 
 }
 
