@@ -24,9 +24,7 @@ public class ConnectLineHandle : Editor {
         GameObject firstObject = connectedObjects.objs[0];
         GameObject lastObject = connectedObjects.objs[connectedObjects.objs.Length - 1];
         Handles.DrawLine(lastObject.transform.position, firstObject.transform.position);        
-    }
-
-	
+    }	
 }
 
 #endif

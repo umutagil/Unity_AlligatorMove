@@ -6,7 +6,7 @@ using UnityEngine;
 
 static class GeometryExtensions
 {
-    static bool FasterLineSegmentIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
+    public static bool FastLineSegmentIntersection(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
     {
 
         Vector2 a = p2 - p1;
@@ -16,7 +16,7 @@ static class GeometryExtensions
         float alphaNumerator = b.y * c.x - b.x * c.y;
         float alphaDenominator = a.y * b.x - a.x * b.y;
         float betaNumerator = a.x * c.y - a.y * c.x;
-        float betaDenominator = a.y * b.x - a.x * b.y;
+        float betaDenominator = alphaDenominator;
 
         bool doIntersect = true;
 

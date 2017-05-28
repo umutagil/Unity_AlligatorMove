@@ -3,87 +3,135 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class RandomMovement : MonoBehaviour {
+public class RandomMovement : MonoBehaviour
+{
 
-    public float speed = 5f;
-    public float debugRotAngle = 0f;
-    public Transform boundaries;
-
-    [Range(0,1)]
+    [Range(0, 1)]
     public float randomness = 0f;
+    public float speed = 5f;
+    public float timeBeforeDecide = 1f;
+    public Transform boundaries;    
 
     private NavMeshAgent agent;
-    private Animator anim;
-    private float lastChangeTime = 0f;
-    private float timeToChange = 1f;
+    private Animator anim;    
     private Vector3 nextDestination;
     private Borders borders;
     private List<Vector3> boundaryCorners;
+    private float lastChangeTime = 0f;
+    private Vector3 prevDestination;
+    private Vector3 startPos;
 
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
-
     }
 
-	void Start () {
+    void Start()
+    {
+        startPos = transform.position;
+        prevDestination = transform.position;
         nextDestination = transform.position + transform.forward;
         agent.SetDestination(nextDestination);
         agent.speed = speed;
-        borders = ComputeBorders(boundaries);
-        boundaryCorners = GetBoundaryCorners(boundaries);
+        borders = ComputeBorders(boundaries);        
     }
-    
-    void Update () {
 
+    void Update()
+    {        
+        ComputeNextDestination();
         agent.speed = speed;
-        //anim.SetFloat("speed", speed);
+        agent.stoppingDistance = speed * 0.2f;
+        float maxSpeed = speed > 0 ? speed : 1;
+        anim.SetFloat("speed", Vector3.Magnitude(agent.velocity) / maxSpeed);        
+    }
 
-        if (Time.time - lastChangeTime > timeToChange)
+    void ComputeNextDestination()
+    {
+        if (Time.time - lastChangeTime > timeBeforeDecide)
         {
             lastChangeTime = Time.time;
-            if(Random.value > 1.0f - randomness)
+            if (Random.value > 1.0f - randomness)
             {
-                float rotAngle = (Random.value - 0.5f) * 90;                
+                float rotAngle = (Random.value * 2 - 1f)  * 90;
                 Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * transform.forward;
-                nextDestination = transform.position + nextDirection;
+                nextDestination = transform.position + nextDirection * speed;
             }
             else
             {
-                nextDestination = transform.position + transform.forward;                
+                nextDestination = transform.position + transform.forward * speed;
             }
 
+            for (int i = 0; i < 5; i++)
+            {
+                if (!IsNewDestionationOut(borders, prevDestination, nextDestination))
+                {
+                    break;
+                }
+
+                float rotAngle = (Random.value * 2 - 1f) * 90;
+                Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * -transform.forward;
+                nextDestination = transform.position + nextDirection * speed;
+
+                if (i == 4)
+                    nextDestination = startPos;
+            }
+            prevDestination = agent.destination;
             agent.SetDestination(nextDestination);
         }
-        else if(agent.remainingDistance <= agent.stoppingDistance)
+        else if (agent.remainingDistance <= agent.stoppingDistance)
         {
-            nextDestination = transform.position + transform.forward;
+            nextDestination = transform.position + transform.forward * speed;
+
+            for(int i = 0; i < 5; i++)
+            {
+                if (!IsNewDestionationOut(borders, prevDestination, nextDestination))
+                {
+                    break;
+                }
+
+                float rotAngle = (Random.value * 2 - 1f) * 90;
+                Vector3 nextDirection = Quaternion.AngleAxis(rotAngle, Vector3.up) * -transform.forward;
+                nextDestination = transform.position + nextDirection * speed;
+
+                if (i == 4)
+                    nextDestination = startPos;
+            }
+            prevDestination = agent.destination;
             agent.SetDestination(nextDestination);
         }
 
-	}
+        Debug.DrawLine(transform.position, nextDestination, Color.red);
+    }
 
-    bool isNewDestionationInBoundary(List<Vector3> boundaryCorners)
-    {
+    //check all the border lines if the new destination is out
+    bool IsNewDestionationOut(Borders borders, Vector3 currentPos, Vector3 nextDestPos)
+    {            
+        Vector2 currentPosXZ = new Vector2(currentPos.x, currentPos.z);
+        Vector2 nextDestPosXZ = new Vector2(nextDestPos.x, nextDestPos.z);
+
+        for (int i = 0; i < borders.lineIndices.Count; i++)
+        {
+            int p1Index = borders.lineIndices[i].pos1;
+            int p2Index = borders.lineIndices[i].pos2;
+            Vector3 p1 = borders.cornerPosList[p1Index];
+            Vector3 p2 = borders.cornerPosList[p2Index];
+            Vector2 p1XZ = new Vector2(p1.x, p1.z);
+            Vector2 p2XZ = new Vector2(p2.x, p2.z);
+
+            bool intersects = GeometryExtensions.FastLineSegmentIntersection(p1XZ, p2XZ, currentPosXZ, nextDestPosXZ);
+            if (intersects)
+                return true;
+        }
+
         return false;
     }
 
-    List<Vector3> GetBoundaryCorners(Transform boundaryTransform)
-    {
-        List<Vector3> cornerPosList = new List<Vector3>();
-        for (int i = 0; i < boundaryTransform.childCount; i++)
-        {
-            Vector3 cornerPos = boundaryTransform.GetChild(i).position;
-            cornerPosList.Add(cornerPos);
-        }
-        return cornerPosList;
-    }
-
+    //gets positions of border corners objects
     Borders ComputeBorders(Transform bordersObj)
     {
         List<Vector3> cornerPosList = new List<Vector3>();
-        for(int i = 0; i < bordersObj.childCount; i++)
+        for (int i = 0; i < bordersObj.childCount; i++)
         {
             Vector3 cornerPos = bordersObj.GetChild(i).position;
             cornerPosList.Add(cornerPos);

@@ -6,34 +6,29 @@ using UnityEngine;
 
 public class Borders
 {
-
-    public Rect rect;
+    public List<Vector3> cornerPosList = new List<Vector3>();
+    public List<Line> lineIndices = new List<Line>();
 
     public Borders(List<Vector3> cornerPosList)
     {
-        float maxX = Mathf.NegativeInfinity;
-        float maxZ = Mathf.NegativeInfinity;
-        float minX = Mathf.Infinity;
-        float minZ = Mathf.Infinity;
-
-        for(int i = 0; i < cornerPosList.Count; i++)
+        this.cornerPosList = cornerPosList;
+        int cornerCount = cornerPosList.Count;
+        for (int i = 0; i < cornerCount; i++)
         {
-            if (cornerPosList[i].x > maxX)
-                maxX = cornerPosList[i].x;
-            if (cornerPosList[i].x < minX)
-                minX = cornerPosList[i].x;
-            if (cornerPosList[i].z > maxZ)
-                maxZ = cornerPosList[i].z;
-            if (cornerPosList[i].z < minZ)
-                minZ = cornerPosList[i].z;
+            Line newLine = new Line(i, (i + 1) % cornerCount);
+            lineIndices.Add(newLine);
         }
+    }    
 
-        rect = new Rect(new Vector2(minX, minZ), new Vector2(maxX - minX, maxZ - minZ));
-    }
+}
 
-    public bool isPointInside(Vector3 point)
+public class Line
+{
+    public int pos1, pos2;
+
+    public Line(int p1, int p2)
     {
-        return rect.Contains(new Vector2(point.x, point.z));                   
+        pos1 = p1;
+        pos2 = p2;
     }
-
 }
